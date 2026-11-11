@@ -66,6 +66,17 @@ function dayLabel(ms) {
   return new Date(ms).toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
 }
 
+/* время «ЧЧ:ММ» → метка времени в тот же день, что base; если выходит в будущем — значит, вчера */
+function atFromHHMM(hhmm, base = Date.now()) {
+  const [h, m] = String(hhmm).split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  const d = new Date(base); d.setHours(h, m, 0, 0);
+  let t = d.getTime();
+  if (t > Date.now() + 5 * 60000) t -= 86400000;
+  return t;
+}
+let customTime = false; // false = «сейчас», true = время из поля
+
 /* ---------------- отрисовка ---------------- */
 function renderWho() {
   const box = $("who"); box.innerHTML = "";
@@ -87,7 +98,8 @@ function renderFood() {
 function updateBtn() {
   const b = $("feedBtn"); b.disabled = !(me && food && db);
   b.innerHTML = ICON.paw + "<span></span>";
-  b.lastChild.textContent = !me ? "Выберите, кто кормит" : !food ? "Выберите корм" : `${me}: покормил(а)`;
+  const t = customTime && $("feedTime").value ? ` в ${$("feedTime").value}` : "";
+  b.lastChild.textContent = !me ? "Выберите, кто кормит" : !food ? "Выберите корм" : `${me}: покормил(а)${t}`;
 }
 /* ---------- настроение Чарли: зависит от времени с последней кормёжки ---------- */
 const FACE = {
@@ -162,7 +174,7 @@ function renderHistory() {
     }
     // кнопка «комментарий»
     const c = document.createElement("button"); c.className = "del"; c.type = "button";
-    c.innerHTML = ICON.chat + (x.note ? "изменить" : "комментарий");
+    c.innerHTML = ICON.chat + "изменить";
     c.onclick = () => { editing = x.id; openNoteEditor(li, x); };
     li.querySelector(".time").appendChild(c);
     if (idx === 0 && Date.now() - x.at < 30 * 60000) {
@@ -177,19 +189,26 @@ function renderHistory() {
 function openNoteEditor(li, x) {
   if (li.querySelector(".note-edit")) return;
   const box = document.createElement("div"); box.className = "note-edit";
-  box.innerHTML = `<input maxlength="140" placeholder="Например: съел половину, дали таблетку"><button class="mini" type="button">Сохранить</button><button class="mini ghosty" type="button">Отмена</button>`;
-  const [inp, save, cancel] = box.children;
-  inp.value = x.note || "";
+  box.innerHTML = `<label class="tl">Время <input type="time" class="tedit"></label>
+    <input class="nedit" maxlength="140" placeholder="Комментарий: съел половину, дали таблетку…">
+    <button class="mini" type="button">Сохранить</button><button class="mini ghosty" type="button">Отмена</button>`;
+  const tInp = box.querySelector(".tedit"), nInp = box.querySelector(".nedit");
+  const [save, cancel] = box.querySelectorAll("button");
+  tInp.value = hm(x.at); nInp.value = x.note || "";
   const close = () => { editing = null; renderHistory(); };
   save.onclick = async () => {
+    const at = atFromHHMM(tInp.value, x.at);
+    if (!at) { showNote("Укажите время в формате ЧЧ:ММ."); return; }
     save.disabled = true;
-    const note = inp.value.trim();
-    try { await updateDoc(doc(db, famPath("feedings", x.id)), { note, noteBy: note ? (me || "") : "" }); close(); }
-    catch { save.disabled = false; showNote("Не удалось сохранить комментарий. Проверьте интернет."); }
+    const note = nInp.value.trim();
+    const patch = { at };
+    if (note !== (x.note || "")) Object.assign(patch, { note, noteBy: note ? (me || "") : "" });
+    try { await updateDoc(doc(db, famPath("feedings", x.id)), patch); showNote(""); close(); }
+    catch { save.disabled = false; showNote("Не удалось сохранить изменения. Проверьте интернет."); }
   };
   cancel.onclick = close;
-  inp.onkeydown = (e) => { if (e.key === "Enter") save.click(); if (e.key === "Escape") close(); };
-  li.appendChild(box); inp.focus();
+  nInp.onkeydown = (e) => { if (e.key === "Enter") save.click(); if (e.key === "Escape") close(); };
+  li.appendChild(box); tInp.focus();
 }
 const renderAll = () => { renderStatus(); renderHistory(); };
 
@@ -237,7 +256,13 @@ $("feedBtn").onclick = async () => {
   $("feedBtn").disabled = true;
   try {
     const note = $("noteInput").value.trim();
-    await addDoc(collection(db, famPath("feedings")), { at: Date.now(), who: me, food, ...(note ? { note, noteBy: me } : {}) });
+    let at = Date.now();
+    if (customTime) {
+      at = atFromHHMM($("feedTime").value);
+      if (!at) { showNote("Укажите время кормления или нажмите «Сейчас»."); updateBtn(); return; }
+    }
+    await addDoc(collection(db, famPath("feedings")), { at, who: me, food, ...(note ? { note, noteBy: me } : {}) });
+    setWhen(false);
     $("noteInput").value = "";
     $("toast").textContent = "Записано! " + family.cat + " сыт.";
     food = null; renderFood(); setTimeout(() => $("toast").textContent = "", 4000);
@@ -245,6 +270,17 @@ $("feedBtn").onclick = async () => {
   updateBtn();
 };
 $("pushBtn").onclick = enablePush;
+function setWhen(custom) {
+  customTime = custom;
+  $("whenNow").setAttribute("aria-pressed", String(!custom));
+  $("whenCustom").setAttribute("aria-pressed", String(custom));
+  $("feedTime").hidden = !custom;
+  if (custom) { $("feedTime").value = hm(Date.now()); $("feedTime").focus(); }
+  updateBtn();
+}
+$("whenNow").onclick = () => setWhen(false);
+$("whenCustom").onclick = () => setWhen(true);
+$("feedTime").oninput = updateBtn;
 $("openSettings").onclick = () => {
   $("catName").value = family.cat;
   [0, 1, 2, 3].forEach((i) => $("m" + i).value = family.members[i] || "");

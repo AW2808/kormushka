@@ -136,6 +136,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .mini{font:inherit;font-weight:800;font-size:.85rem;padding:9px 12px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer}
 .mini.ghosty{background:transparent;color:var(--muted);border:1px solid var(--chip-line)}
 .notefield{font-size:.95rem}
+.when{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.whenbtn{font:inherit;font-weight:700;padding:10px 14px;border-radius:14px;border:1.5px solid transparent;background:var(--chip);color:var(--ink);cursor:pointer}
+.whenbtn[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+#feedTime{width:auto;flex:0 0 auto;font-weight:800;font-variant-numeric:tabular-nums;padding:9px 12px}
+.note-edit .tl{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);flex:0 0 auto}
+.note-edit .tedit{width:auto;padding:8px 10px;font-weight:800}
 .day{font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:10px 4px 2px}
 .hint{color:var(--muted);font-size:.9rem;margin:0}
 
@@ -198,6 +204,13 @@ label{font-weight:700;font-size:.9rem}
     <section class="glass panel">
       <div class="row"><h2>Кто кормит</h2><div class="people" id="who"></div></div>
       <div class="row"><h2>Чем</h2><div class="foods" id="food"></div></div>
+      <div class="row"><h2>Когда</h2>
+        <div class="when">
+          <button class="whenbtn" id="whenNow" type="button" aria-pressed="true">Сейчас</button>
+          <button class="whenbtn" id="whenCustom" type="button" aria-pressed="false">Указать время</button>
+          <input type="time" id="feedTime" hidden>
+        </div>
+      </div>
       <input class="notefield" id="noteInput" maxlength="140" placeholder="Комментарий, если нужно: съел половину, дали таблетку…">
       <button class="btn" id="feedBtn" type="button" disabled></button>
       <p class="toast" id="toast"></p>

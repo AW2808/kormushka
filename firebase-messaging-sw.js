@@ -22,7 +22,7 @@ try {
 } catch (e) { /* конфиг ещё не заполнен */ }
 
 // --- кэш оболочки приложения: сначала сеть, без сети — сохранённая копия ---
-const CACHE = "kormushka-v5";
+const CACHE = "kormushka-v6";
 const SHELL = ["./", "./index.html", "./app.js", "./config.js", "./cat.jpg", "./cat-hungry.jpg", "./cat-waiting.jpg", "./cat-fed.jpg", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/apple-touch-icon.png", "./icons/favicon.png"];
 
