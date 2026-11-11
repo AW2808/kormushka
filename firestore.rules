@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Данные семьи лежат по секретному коду: families/<код>/<feedings|meta|tokens>/<запись>
+    // Читать и писать может только тот, кто знает код. Список всех семей получить нельзя.
+    match /families/{fam}/{coll}/{docId} {
+      allow read, write: if request.auth != null
+                         && fam.size() >= 16
+                         && coll in ['feedings', 'meta', 'tokens'];
+    }
+  }
+}

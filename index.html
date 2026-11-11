@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Кормушка кота</title>
+<meta name="theme-color" content="#6c4cf5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Кормушка">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700;800&display=swap">
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#f3f1fb; --glass:rgba(255,255,255,.62); --glass-line:rgba(255,255,255,.85); --ink:#1c1b2e; --muted:#656482;
+  --blob1:#b9a7ff; --blob2:#8fe3cf; --blob3:#ffc9a8;
+  --fed:#14a37f; --hungry:#f2771f; --accent:#6c4cf5; --accent-ink:#ffffff;
+  --chip:rgba(255,255,255,.55); --chip-line:rgba(28,27,46,.10);
+  --shadow:0 18px 50px -20px rgba(60,40,140,.35);
+  --display:"Unbounded",system-ui,sans-serif; --body:"Manrope",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d0c1d; --glass:rgba(30,28,58,.55); --glass-line:rgba(255,255,255,.10); --ink:#f1efff; --muted:#a6a3c8;
+  --blob1:#5b3fd6; --blob2:#0f8f7a; --blob3:#b4532a;
+  --fed:#3fe0b0; --hungry:#ff9b4d; --accent:#9b85ff; --accent-ink:#120f2a;
+  --chip:rgba(255,255,255,.06); --chip-line:rgba(255,255,255,.12);
+  --shadow:0 18px 50px -20px rgba(0,0,0,.7); color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent;
+  padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(40px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  overflow-x:hidden}
+[hidden]{display:none!important}
+.backdrop{position:fixed;inset:0;z-index:-1;overflow:hidden;background:var(--bg)}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.75;animation:drift 22s ease-in-out infinite alternate}
+.b1{width:60vmax;height:60vmax;background:var(--blob1);top:-25vmax;left:-20vmax}
+.b2{width:50vmax;height:50vmax;background:var(--blob2);bottom:-22vmax;right:-18vmax;animation-delay:-7s}
+.b3{width:36vmax;height:36vmax;background:var(--blob3);top:35%;left:55%;opacity:.45;animation-delay:-13s}
+body.is-hungry .b2{background:var(--hungry);opacity:.55}
+body.is-fed .b3{background:var(--fed);opacity:.35}
+@keyframes drift{to{transform:translate(6vmax,4vmax) scale(1.08)}}
+
+.app{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2{margin:0;text-wrap:balance}
+h1{font-family:var(--display);font-size:1.05rem;font-weight:700}
+h2{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.icon-btn{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;border:1px solid var(--glass-line);background:var(--glass);color:var(--ink);cursor:pointer;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.icon-btn svg{width:20px;height:20px}
+.glass{background:var(--glass);border:1px solid var(--glass-line);border-radius:28px;box-shadow:var(--shadow);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)}
+
+.status{padding:26px 20px 22px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.portrait{position:relative;width:180px;max-width:58%;aspect-ratio:1}
+.ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--state,var(--muted)) calc(var(--p,0)*1%),var(--chip-line) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px))}
+.face{position:absolute;inset:12px;border-radius:50%;overflow:hidden}
+.face img{width:100%;height:100%;object-fit:cover;display:block;transition:filter .5s}
+.hungry .face img{filter:saturate(.75)}
+.badge{position:absolute;right:2%;bottom:6%;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--state,var(--muted));color:#fff;border:3px solid var(--bg)}
+.badge svg{width:24px;height:24px}
+.status.fed{--state:var(--fed)} .status.hungry{--state:var(--hungry)}
+.hungry .badge{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.12)}}
+.verdict{font-family:var(--display);font-weight:700;font-size:1.55rem;margin-top:6px;color:var(--state,var(--ink))}
+.since{font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
+.since svg{width:18px;height:18px}
+.next{color:var(--muted);font-size:.92rem}
+.today{display:flex;gap:8px;margin-top:8px;align-items:center;font-size:.85rem;color:var(--muted);font-weight:600}
+.meal{width:28px;height:8px;border-radius:99px;background:var(--chip-line)}
+.meal.on{background:var(--state,var(--fed))}
+
+.panel{padding:20px;display:flex;flex-direction:column;gap:16px}
+.row{display:flex;flex-direction:column;gap:10px}
+.people{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.person{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border-radius:18px;border:1.5px solid transparent;background:var(--chip);color:var(--ink);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;min-width:0}
+.person span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ava{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#fff}
+.person[aria-pressed="true"],.food[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.foods{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.food{display:flex;align-items:center;gap:12px;padding:12px;border-radius:20px;border:1.5px solid transparent;background:var(--chip);color:var(--ink);font:inherit;font-weight:800;cursor:pointer;min-width:0;text-align:left}
+.fi{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;flex:none}
+.fi svg{width:30px;height:30px}
+.fi.fish{background:linear-gradient(135deg,#5ec8f2,#3a7bf0)} .fi.meat{background:linear-gradient(135deg,#ff8a7a,#e0476a)}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;font:inherit;font-family:var(--display);font-weight:700;font-size:1rem;padding:18px;border:0;border-radius:20px;
+  background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 60%,var(--fed)));color:var(--accent-ink);cursor:pointer;box-shadow:0 14px 30px -12px var(--accent)}
+.btn svg{width:22px;height:22px}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4;box-shadow:none}
+.ghost{font:inherit;font-weight:700;padding:12px;border-radius:16px;border:1px solid var(--chip-line);background:var(--chip);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.ghost svg{width:18px;height:18px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.toast{font-weight:700;color:var(--fed);min-height:1.3em;margin:0;text-align:center}
+
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:8px;border-radius:16px;background:var(--chip)}
+.item .fi{width:38px;height:38px;border-radius:12px} .item .fi svg{width:24px;height:24px}
+.what{min-width:0;display:flex;flex-direction:column}
+.what span{color:var(--muted);font-size:.85rem}
+.time{font-variant-numeric:tabular-nums;font-weight:800;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.del{display:inline-flex;align-items:center;gap:4px;background:none;border:0;color:var(--muted);font:inherit;font-size:.75rem;font-weight:700;cursor:pointer;padding:0}
+.del svg{width:13px;height:13px}
+.day{font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:10px 4px 2px}
+.hint{color:var(--muted);font-size:.9rem;margin:0}
+
+input{font:inherit;padding:12px;border-radius:14px;border:1px solid var(--chip-line);background:var(--chip);color:var(--ink);width:100%}
+label{font-weight:700;font-size:.9rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.code{font-family:ui-monospace,Menlo,monospace;font-size:.85rem;padding:12px;border-radius:14px;background:var(--chip);word-break:break-all;user-select:all}
+.note{border-radius:18px;padding:12px 16px;font-size:.9rem;font-weight:600;margin:0;background:color-mix(in srgb,var(--hungry) 18%,var(--glass))}
+.setup{padding:26px 20px;display:flex;flex-direction:column;gap:14px;text-align:center}
+.setup .logo{width:120px;height:120px;border-radius:50%;overflow:hidden;margin:0 auto;border:4px solid var(--glass-line)}
+.setup .logo img{width:100%;height:100%;object-fit:cover}
+.or{color:var(--muted);font-size:.85rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<div class="app">
+  <header>
+    <h1 id="title">Кормушка кота</h1>
+    <button class="icon-btn" id="openSettings" type="button" aria-label="Настройки" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+    </button>
+  </header>
+
+  <p class="note" id="note" hidden></p>
+
+  <!-- Первый запуск: создать семью или ввести код -->
+  <section class="glass setup" id="setup" hidden>
+    <div class="logo"><img src="cat.jpg" alt="Кот"></div>
+    <h1>Добро пожаловать!</h1>
+    <p class="hint">Все члены семьи пользуются одним общим кодом. Один человек создаёт его, остальные получают ссылку-приглашение.</p>
+    <button class="btn" id="createFamily" type="button">Создать семью</button>
+    <span class="or">или</span>
+    <input id="joinCode" placeholder="Вставьте код семьи" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="ghost" id="joinFamily" type="button">Войти по коду</button>
+  </section>
+
+  <div id="main" hidden style="display:contents">
+    <section class="glass status" id="status" aria-live="polite">
+      <div class="portrait">
+        <div class="ring" id="ring"></div>
+        <div class="face"><img src="cat.jpg" alt="Кот"></div>
+        <div class="badge" id="badge" hidden></div>
+      </div>
+      <div class="verdict" id="verdict">Загружаю…</div>
+      <div class="since" id="since"></div>
+      <div class="next" id="next"></div>
+      <div class="today" id="today"></div>
+    </section>
+
+    <section class="glass panel">
+      <div class="row"><h2>Кто кормит</h2><div class="people" id="who"></div></div>
+      <div class="row"><h2>Чем</h2><div class="foods" id="food"></div></div>
+      <button class="btn" id="feedBtn" type="button" disabled></button>
+      <p class="toast" id="toast"></p>
+      <button class="ghost" id="pushBtn" type="button" hidden></button>
+    </section>
+
+    <section class="glass panel" id="settings" hidden>
+      <h2>Настройки</h2>
+      <label class="row">Имя кота<input id="catName" maxlength="24"></label>
+      <div class="row"><label for="m0">Члены семьи</label>
+        <div class="grid2"><input id="m0" maxlength="16"><input id="m1" maxlength="16"><input id="m2" maxlength="16"><input id="m3" maxlength="16"></div>
+      </div>
+      <button class="btn" id="saveSettings" type="button">Сохранить</button>
+      <div class="row">
+        <h2>Пригласить семью</h2>
+        <p class="hint">Отправьте эту ссылку супруге и детям. Если на iPhone приложение попросит код, вставьте код ниже.</p>
+        <div class="code" id="inviteLink"></div>
+        <button class="ghost" id="copyLink" type="button">Скопировать ссылку</button>
+        <div class="code" id="famCode"></div>
+      </div>
+      <button class="ghost" id="closeSettings" type="button">Закрыть</button>
+    </section>
+
+    <section class="glass panel">
+      <h2>История</h2>
+      <ul class="list" id="history"></ul>
+    </section>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
