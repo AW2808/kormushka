@@ -22,7 +22,7 @@ try {
 } catch (e) { /* конфиг ещё не заполнен */ }
 
 // --- кэш оболочки приложения: сначала сеть, без сети — сохранённая копия ---
-const CACHE = "kormushka-v6";
+const CACHE = "kormushka-v7";
 const SHELL = ["./", "./index.html", "./app.js", "./config.js", "./cat.jpg", "./cat-hungry.jpg", "./cat-waiting.jpg", "./cat-fed.jpg", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/apple-touch-icon.png", "./icons/favicon.png"];
 
@@ -40,7 +40,7 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
   e.respondWith((async () => {
     try {
-      const res = await fetch(e.request);
+      const res = await fetch(e.request, { cache: "no-cache" }); // всегда сверяемся с сервером
       if (res.ok) { const c = await caches.open(CACHE); c.put(e.request, res.clone()); }
       return res;
     } catch {

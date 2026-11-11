@@ -331,7 +331,20 @@ async function start() {
   }, (e) => { console.error(e); clearTimeout(timer); showNote("Нет доступа к данным. Проверьте правила Firestore (шаг 2 инструкции)."); });
 }
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("./firebase-messaging-sw.js").catch(console.error);
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./firebase-messaging-sw.js", { updateViaCache: "none" }).then((reg) => {
+    // при каждом возвращении в приложение проверяем, нет ли новой версии
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) reg.update().catch(() => {}); });
+  }).catch(console.error);
+  // новая версия установилась — один раз перезагружаем страницу
+  let reloaded = false;
+  const hadController = !!navigator.serviceWorker.controller; // при самой первой установке не перезагружаем
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloaded || !hadController) return;
+    if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return; // не мешаем, если человек печатает
+    reloaded = true; location.reload();
+  });
+}
 setInterval(renderAll, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) renderAll(); });
 
