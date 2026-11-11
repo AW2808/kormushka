@@ -1,0 +1,27 @@
+name: Кот голоден?
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Установить firebase-admin
+        working-directory: notifier
+        run: npm install --no-audit --no-fund
+      - name: Проверить, не голоден ли кот
+        working-directory: notifier
+        run: node check.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FAMILY_ID: ${{ secrets.FAMILY_ID }}
+          HUNGRY_HOURS: "6"
+          TIMEZONE: "Europe/Berlin"
