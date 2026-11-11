@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, deleteDoc, setDoc, onSnapshot, query, orderBy, limit }
+import { getFirestore, collection, doc, addDoc, deleteDoc, setDoc, updateDoc, onSnapshot, query, orderBy, limit }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
@@ -22,6 +22,7 @@ const ICON = {
   paw: `<svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="7" cy="9" rx="2" ry="2.6"/><ellipse cx="12" cy="6.6" rx="2" ry="2.6"/><ellipse cx="17" cy="9" rx="2" ry="2.6"/><path d="M12 11.5c3 0 6 3.4 6 6 0 2-1.6 3-3.4 2.6-1-.2-1.6-.6-2.6-.6s-1.6.4-2.6.6C7.6 20.5 6 19.5 6 17.5c0-2.6 3-6 6-6z"/></svg>`,
   clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
   undo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>`,
+  chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>`,
   bell: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`
 };
 const FOOD = { fish: "Рыбка", meat: "Мясо" };
@@ -88,33 +89,62 @@ function updateBtn() {
   b.innerHTML = ICON.paw + "<span></span>";
   b.lastChild.textContent = !me ? "Выберите, кто кормит" : !food ? "Выберите корм" : `${me}: покормил(а)`;
 }
+/* ---------- настроение Чарли: зависит от времени с последней кормёжки ---------- */
+const FACE = {
+  happy:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 10q1.5-2 3 0M14.5 10q1.5-2 3 0"/><path d="M7.5 14q4.5 5 9 0"/></svg>`,
+  calm:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 10.5h3M14.5 10.5h3"/><path d="M8.5 15q3.5 2 7 0"/></svg>`,
+  soon:     `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="8" cy="10" r="1.6" stroke="none"/><circle cx="16" cy="10" r="1.6" stroke="none"/><path d="M9 15.5h6" fill="none"/></svg>`,
+  hungry:   `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="8" cy="9.5" r="2" stroke="none"/><circle cx="16" cy="9.5" r="2" stroke="none"/><ellipse cx="12" cy="16" rx="2.6" ry="2.2" stroke="none"/></svg>`,
+  starving: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 9.5q1.5 1.5 3 0M14.5 9.5q1.5 1.5 3 0"/><path d="M8 17q4-4 8 0"/><path d="M7.6 12.2v2.4" stroke-width="1.8"/></svg>`
+};
+function moodOf(hrs) {
+  const c = family.cat;
+  if (hrs < HUNGRY_H / 3)     return { k: "happy",    title: `${c} счастлив`,             say: "Мурр! Спасибо, я сыт 😻" };
+  if (hrs < HUNGRY_H * 2 / 3) return { k: "calm",     title: `${c} сыт`,                  say: "Всё хорошо, отдыхаю…" };
+  if (hrs < HUNGRY_H)         return { k: "soon",     title: `${c} скоро проголодается`,  say: "А что у нас на ужин? 🤔" };
+  if (hrs < HUNGRY_H + 2)     return { k: "hungry",   title: `${c} голоден!`,             say: "Мяу! Покормите меня!" };
+  return                             { k: "starving", title: `${c} очень голоден!`,       say: "Меня все забыли… 😿" };
+}
+const MOODS = ["happy", "calm", "soon", "hungry", "starving"];
+
 function renderStatus() {
   $("title").textContent = "Кормушка · " + family.cat;
   document.title = "Кормушка · " + family.cat;
   if (!loaded) return;
   const st = $("status"), last = feedings[0], badge = $("badge");
-  document.body.classList.remove("is-fed", "is-hungry");
+  MOODS.forEach((m) => document.body.classList.remove("m-" + m));
   if (!last) {
-    st.className = "glass status"; badge.hidden = true; $("ring").style.setProperty("--p", 0);
+    st.className = "glass status"; badge.hidden = true; $("catImg").src = "cat.jpg"; $("ring").style.setProperty("--p", 0);
+    $("say").hidden = true;
     $("verdict").textContent = family.cat + " ждёт первую запись";
-    $("since").textContent = ""; $("next").textContent = "Отметьте кормление ниже."; $("today").innerHTML = ""; return;
+    $("since").textContent = ""; $("lastNote").hidden = true;
+    $("next").textContent = "Отметьте кормление ниже."; $("today").innerHTML = ""; return;
   }
-  const hrs = (Date.now() - last.at) / 3600000, hungry = hrs >= HUNGRY_H;
-  st.className = "glass status " + (hungry ? "hungry" : "fed");
-  document.body.classList.add(hungry ? "is-hungry" : "is-fed");
-  badge.hidden = false; badge.innerHTML = hungry ? ICON.bowl : ICON.check;
+  const hrs = (Date.now() - last.at) / 3600000, hungry = hrs >= HUNGRY_H, mood = moodOf(hrs);
+  st.className = "glass status m-" + mood.k;
+  document.body.classList.add("m-" + mood.k);
+  badge.hidden = false; badge.innerHTML = FACE[mood.k];
+  const photo = { happy: "cat-fed.jpg", calm: "cat-fed.jpg", soon: "cat-waiting.jpg", hungry: "cat-hungry.jpg", starving: "cat-hungry.jpg" }[mood.k] || "cat.jpg";
+  if (!$("catImg").src.endsWith(photo)) $("catImg").src = photo;
+  $("say").hidden = false; $("say").textContent = mood.say;
   $("ring").style.setProperty("--p", hungry ? 100 : Math.max(4, Math.round(100 - hrs / HUNGRY_H * 100)));
-  $("verdict").textContent = hungry ? family.cat + " голоден!" : family.cat + " сыт";
+  $("verdict").textContent = mood.title;
   $("since").innerHTML = ICON.clock + "<span></span>";
   $("since").lastChild.textContent = `${hm(last.at)} · ${last.who} · ${(FOOD[last.food] || "").toLowerCase()} · ${ago(last.at)}`;
+  const ln = $("lastNote");
+  if (last.note) { ln.hidden = false; ln.textContent = `«${last.note}»` + (last.noteBy ? ` — ${last.noteBy}` : ""); } else ln.hidden = true;
   $("next").textContent = hungry ? `Прошло больше ${HUNGRY_H} ч с последней кормёжки.`
     : `Проголодается примерно в ${hm(last.at + HUNGRY_H * 3600000)}`;
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
   const n = feedings.filter((x) => x.at >= t0.getTime()).length;
   $("today").innerHTML = "<span>Сегодня</span>" + Array.from({ length: MEALS }, (_, i) => `<span class="meal${i < n ? " on" : ""}"></span>`).join("") + `<span>${n} из ${MEALS}</span>`;
 }
+
+let editing = null; // id записи, к которой сейчас пишут комментарий
 function renderHistory() {
-  const ul = $("history"); ul.innerHTML = "";
+  const ul = $("history");
+  if (editing && ul.contains(document.activeElement)) return; // не мешаем, пока человек печатает
+  ul.innerHTML = "";
   if (!feedings.length) { ul.innerHTML = `<li><p class="hint">Пока ни одной записи. Покормите кота и нажмите кнопку выше.</p></li>`; return; }
   let lastDay = "";
   feedings.slice(0, 30).forEach((x, idx) => {
@@ -122,15 +152,44 @@ function renderHistory() {
     if (dl !== lastDay) { const h = document.createElement("li"); h.className = "day"; h.textContent = dl; ul.appendChild(h); lastDay = dl; }
     const k = FOOD[x.food] ? x.food : "meat";
     const li = document.createElement("li"); li.className = "item";
-    li.innerHTML = `<span class="fi ${k}">${ICON[k]}</span><span class="what"><b></b><span></span></span><span class="time"><span>${hm(x.at)}</span></span>`;
-    li.querySelector("b").textContent = FOOD[k]; li.querySelector(".what span").textContent = x.who;
+    li.innerHTML = `<span class="fi ${k}">${ICON[k]}</span><span class="what"><b></b><span class="by"></span></span><span class="time"><span>${hm(x.at)}</span></span>`;
+    li.querySelector("b").textContent = FOOD[k]; li.querySelector(".by").textContent = x.who;
+    const what = li.querySelector(".what");
+    if (x.note) {
+      const n = document.createElement("span"); n.className = "cmt";
+      n.textContent = `💬 ${x.note}` + (x.noteBy && x.noteBy !== x.who ? ` — ${x.noteBy}` : "");
+      what.appendChild(n);
+    }
+    // кнопка «комментарий»
+    const c = document.createElement("button"); c.className = "del"; c.type = "button";
+    c.innerHTML = ICON.chat + (x.note ? "изменить" : "комментарий");
+    c.onclick = () => { editing = x.id; openNoteEditor(li, x); };
+    li.querySelector(".time").appendChild(c);
     if (idx === 0 && Date.now() - x.at < 30 * 60000) {
       const d = document.createElement("button"); d.className = "del"; d.type = "button"; d.innerHTML = ICON.undo + "отменить";
       d.onclick = async () => { d.disabled = true; try { await deleteDoc(doc(db, famPath("feedings", x.id))); } catch { d.disabled = false; showNote("Не получилось отменить. Проверьте интернет."); } };
       li.querySelector(".time").appendChild(d);
     }
     ul.appendChild(li);
+    if (editing === x.id) openNoteEditor(li, x);
   });
+}
+function openNoteEditor(li, x) {
+  if (li.querySelector(".note-edit")) return;
+  const box = document.createElement("div"); box.className = "note-edit";
+  box.innerHTML = `<input maxlength="140" placeholder="Например: съел половину, дали таблетку"><button class="mini" type="button">Сохранить</button><button class="mini ghosty" type="button">Отмена</button>`;
+  const [inp, save, cancel] = box.children;
+  inp.value = x.note || "";
+  const close = () => { editing = null; renderHistory(); };
+  save.onclick = async () => {
+    save.disabled = true;
+    const note = inp.value.trim();
+    try { await updateDoc(doc(db, famPath("feedings", x.id)), { note, noteBy: note ? (me || "") : "" }); close(); }
+    catch { save.disabled = false; showNote("Не удалось сохранить комментарий. Проверьте интернет."); }
+  };
+  cancel.onclick = close;
+  inp.onkeydown = (e) => { if (e.key === "Enter") save.click(); if (e.key === "Escape") close(); };
+  li.appendChild(box); inp.focus();
 }
 const renderAll = () => { renderStatus(); renderHistory(); };
 
@@ -177,7 +236,9 @@ async function enablePush() {
 $("feedBtn").onclick = async () => {
   $("feedBtn").disabled = true;
   try {
-    await addDoc(collection(db, famPath("feedings")), { at: Date.now(), who: me, food });
+    const note = $("noteInput").value.trim();
+    await addDoc(collection(db, famPath("feedings")), { at: Date.now(), who: me, food, ...(note ? { note, noteBy: me } : {}) });
+    $("noteInput").value = "";
     $("toast").textContent = "Записано! " + family.cat + " сыт.";
     food = null; renderFood(); setTimeout(() => $("toast").textContent = "", 4000);
   } catch (e) { console.error(e); showNote("Не удалось сохранить. Проверьте интернет и попробуйте снова."); }
